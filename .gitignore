@@ -2,3 +2,6 @@ bin/
 obj/
 *.user
 *.zip
+
+thunderstore/patchers/*.dll
+thunderstore/plugins/*.dll
