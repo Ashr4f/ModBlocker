@@ -12,12 +12,12 @@ namespace ModBlocker
     /// ".blocked" BEFORE the chainloader scans them. Removing an entry re-enables
     /// the mod on the next launch. Nothing is ever deleted.
     ///
-    /// Config format (editable in-game through the companion plugin, F1):
-    ///   [Blocklist]
-    ///   Mods = Author-ModName, SomePlugin.dll
-    ///
-    /// Bare lines (one entry per line) are also accepted for backward compatibility.
-    /// Matching is case-insensitive and whitespace-tolerant.
+    /// Safety nets:
+    ///  - Self-protection: ModBlocker never blocks its own components.
+    ///  - Core protection: BepInEx and Jotunn can never be blocked.
+    ///  - Cascade blocking: blocking a mod also blocks every mod that depends
+    ///    on it (recursively), so nothing is left loading against a missing
+    ///    dependency. Each cascade is logged: "Also blocked: X (depends on Y)".
     /// </summary>
     public static class Patcher
     {
@@ -29,11 +29,29 @@ namespace ModBlocker
             Path.GetFullPath(Path.Combine(Path.GetDirectoryName(typeof(Patcher).Assembly.Location) ?? ".", ".."));
         private static readonly string LogFile = Path.Combine(BepInExRoot, "ModBlocker.log");
 
+        private static readonly string[] Protected = { "modblocker.dll", "modblockerui.dll" };
+
         // Called by the preloader before plugins are loaded.
         public static void Initialize()
         {
             try { File.WriteAllText(LogFile, ""); Run(); }
             catch (Exception e) { Log("Fatal error: " + e); }
+        }
+
+        // ------------------------------------------------------------------
+        // Model: one "unit" = one mod folder (r2modman layout) or one loose DLL.
+        // ------------------------------------------------------------------
+        private class Unit
+        {
+            public string Name;
+            public List<string> Files = new List<string>();   // all files of the unit
+            public bool Blocked;
+
+            // Metadata of the unit's DLLs (filled by Analyze)
+            public List<string> AssemblyNames = new List<string>();
+            public List<string> PluginGuids = new List<string>();
+            public List<string> ReferencedAssemblies = new List<string>();
+            public List<string> HardDependencyGuids = new List<string>();
         }
 
         private static void Run()
@@ -45,17 +63,140 @@ namespace ModBlocker
             string plugins = Path.Combine(BepInExRoot, "plugins");
             if (!Directory.Exists(plugins)) { Log("Plugins folder not found: " + plugins); return; }
 
-            // Mod-manager layout: plugins/Author-ModName/
+            // Collect units
+            var units = new List<Unit>();
             foreach (string dir in Directory.GetDirectories(plugins))
             {
-                bool blockFolder = blocklist.Contains(Normalize(Path.GetFileName(dir)));
-                foreach (string file in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
-                    Apply(file, blockFolder || IsDllMatch(file, blocklist));
+                var u = new Unit { Name = Path.GetFileName(dir) };
+                u.Files.AddRange(Directory.GetFiles(dir, "*", SearchOption.AllDirectories));
+                u.Blocked = blocklist.Contains(Normalize(u.Name)) || AnyDllListed(u, blocklist);
+                units.Add(u);
+            }
+            foreach (string file in Directory.GetFiles(plugins))
+            {
+                var u = new Unit { Name = Path.GetFileName(file) };
+                u.Files.Add(file);
+                u.Blocked = AnyDllListed(u, blocklist);
+                units.Add(u);
             }
 
-            // Manual installs: loose DLLs at the root of plugins/
-            foreach (string file in Directory.GetFiles(plugins))
-                Apply(file, IsDllMatch(file, blocklist));
+            // Analyze DLL metadata (assembly names, plugin GUIDs, references, hard deps)
+            foreach (Unit u in units) Analyze(u);
+
+            // Core protection: BepInEx and Jotunn can never be blocked.
+            foreach (Unit u in units)
+            {
+                if (u.Blocked && IsCoreLibrary(u))
+                {
+                    u.Blocked = false;
+                    Log("Refused: " + u.Name + " is a protected core library (BepInEx/Jotunn).");
+                }
+            }
+
+            // Cascade blocking: every mod that depends on a blocked mod gets
+            // blocked too, recursively, so nothing loads against a missing dependency.
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                foreach (Unit kept in units)
+                {
+                    if (kept.Blocked || IsCoreLibrary(kept)) continue;
+                    foreach (Unit blocked in units)
+                    {
+                        if (!blocked.Blocked || blocked == kept) continue;
+                        string reason = Needs(kept, blocked);
+                        if (reason != null)
+                        {
+                            kept.Blocked = true;
+                            changed = true;
+                            Log("Also blocked: " + kept.Name + " (depends on " + blocked.Name + ", " + reason + ")");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Apply renames
+            foreach (Unit u in units)
+                foreach (string file in u.Files)
+                    Apply(file, u.Blocked);
+        }
+
+        /// <summary>Does 'kept' need 'blocked'? Returns a reason string, or null.</summary>
+        private static string Needs(Unit kept, Unit blocked)
+        {
+            foreach (string r in kept.ReferencedAssemblies)
+                foreach (string a in blocked.AssemblyNames)
+                    if (r.Equals(a, StringComparison.OrdinalIgnoreCase))
+                        return "assembly reference " + a;
+            foreach (string g in kept.HardDependencyGuids)
+                foreach (string bg in blocked.PluginGuids)
+                    if (g.Equals(bg, StringComparison.OrdinalIgnoreCase))
+                        return "hard BepInDependency " + bg;
+            return null;
+        }
+
+        /// <summary>BepInEx and Jotunn must never be blocked.</summary>
+        private static bool IsCoreLibrary(Unit u)
+        {
+            if (Normalize(u.Name).Contains("jotunn")) return true;
+            foreach (string a in u.AssemblyNames)
+                if (a.Equals("Jotunn", StringComparison.OrdinalIgnoreCase)
+                 || a.StartsWith("BepInEx", StringComparison.OrdinalIgnoreCase)) return true;
+            foreach (string g in u.PluginGuids)
+                if (g.Equals("com.jotunn.jotunn", StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private static void Analyze(Unit u)
+        {
+            foreach (string file in u.Files)
+            {
+                string path = file;
+                bool isDll = path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                          || path.EndsWith(".dll.blocked", StringComparison.OrdinalIgnoreCase);
+                if (!isDll) continue;
+                try
+                {
+                    using (ModuleDefinition module = ModuleDefinition.ReadModule(path))
+                    {
+                        if (module.Assembly != null)
+                            u.AssemblyNames.Add(module.Assembly.Name.Name);
+                        foreach (AssemblyNameReference r in module.AssemblyReferences)
+                            u.ReferencedAssemblies.Add(r.Name);
+                        foreach (TypeDefinition type in module.Types)
+                        {
+                            if (!type.HasCustomAttributes) continue;
+                            foreach (CustomAttribute attr in type.CustomAttributes)
+                            {
+                                string full = attr.AttributeType.FullName;
+                                if (full == "BepInEx.BepInPlugin" && attr.ConstructorArguments.Count > 0)
+                                {
+                                    u.PluginGuids.Add(attr.ConstructorArguments[0].Value as string ?? "");
+                                }
+                                else if (full == "BepInEx.BepInDependency" && attr.ConstructorArguments.Count > 0)
+                                {
+                                    // Single-arg ctor = hard dependency. Two-arg: flags bit 1 = hard.
+                                    bool hard = true;
+                                    if (attr.ConstructorArguments.Count > 1 && attr.ConstructorArguments[1].Value is int)
+                                        hard = (((int)attr.ConstructorArguments[1].Value) & 1) != 0;
+                                    if (hard)
+                                        u.HardDependencyGuids.Add(attr.ConstructorArguments[0].Value as string ?? "");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { /* unreadable/native DLL - ignore */ }
+            }
+        }
+
+        private static bool AnyDllListed(Unit u, List<string> blocklist)
+        {
+            foreach (string file in u.Files)
+                if (IsDllMatch(file, blocklist)) return true;
+            return false;
         }
 
         /// <summary>Lowercase + trim, so entries match 100% regardless of case or stray spaces.</summary>
@@ -63,10 +204,6 @@ namespace ModBlocker
         {
             return (s ?? "").Trim().ToLowerInvariant();
         }
-
-        // Self-protection: ModBlocker must never block its own components,
-        // otherwise users could lock themselves out of the blocklist UI.
-        private static readonly string[] Protected = { "modblocker.dll", "modblockerui.dll" };
 
         private static bool IsProtected(string file)
         {
@@ -135,7 +272,6 @@ namespace ModBlocker
 
                 if (line.IndexOf('=') >= 0)
                 {
-                    // "Mods = a, b, c" (BepInEx config entry written by the companion plugin)
                     string key = line.Substring(0, line.IndexOf('=')).Trim();
                     if (!key.Equals("Mods", StringComparison.OrdinalIgnoreCase)) continue;
                     string value = line.Substring(line.IndexOf('=') + 1);
@@ -147,7 +283,6 @@ namespace ModBlocker
                 }
                 else
                 {
-                    // Legacy format: one bare entry per line
                     string entry = Normalize(line);
                     if (entry.Length > 0 && !list.Contains(entry)) list.Add(entry);
                 }

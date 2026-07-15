@@ -39,9 +39,20 @@ on the **next launch** (blocking happens before plugins load, by design).
 
 A log of every block/re-enable action is written to `BepInEx/ModBlocker.log`.
 
+## Safety nets
+
+- **Core protection**: BepInEx and Jotunn can never be blocked — entries
+  targeting them are refused and logged.
+- **Cascade blocking**: if you block a mod that other mods depend on, those
+  dependents are **automatically blocked too**, recursively (2, 3, 5 mods —
+  the whole chain). Each cascade is logged as `Also blocked: X (depends on Y)`.
+  Removing the original entry restores the entire chain on the next launch.
+- **Self-protection**: entries targeting ModBlocker's own components are ignored.
+
 ## Warnings
 
-- Do not block a library other mods depend on (e.g. Jotunn) — dependents will error.
+- Blocking a mod that others depend on blocks the dependents as well (see
+  cascade above) — check `BepInEx/ModBlocker.log` to see the full chain.
 - Blocking a content mod (items/creatures) has the same effect on an existing
   world as uninstalling it: its objects will be missing while blocked.
 

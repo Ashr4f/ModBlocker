@@ -4,7 +4,7 @@
     <AssemblyName>ModBlocker</AssemblyName>
     <RootNamespace>ModBlocker</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>

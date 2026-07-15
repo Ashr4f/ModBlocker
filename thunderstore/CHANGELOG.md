@@ -13,3 +13,7 @@
 
 ## 1.1.2
 - Multi-line config description, neutral example in docs.
+
+## 1.2.0
+- Core protection: BepInEx and Jotunn can never be blocked.
+- Cascade blocking: blocking a mod automatically blocks every mod that depends on it (recursively), logged as 'Also blocked: X (depends on Y)'. Removing the entry restores the whole chain.
