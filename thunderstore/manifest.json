@@ -1,0 +1,7 @@
+{
+  "name": "ModBlocker",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/Ashr4f/ModBlocker",
+  "description": "Preloader patcher that prevents blocklisted mods from loading. Lets modpack maintainers remotely disable a mod for all players via a one-line config update.",
+  "dependencies": ["denikson-BepInExPack_Valheim-5.4.2333"]
+}
