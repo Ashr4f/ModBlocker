@@ -8,6 +8,10 @@
     <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The Plugin subfolder is a separate project - do not compile it here. -->
+    <Compile Remove="Plugin/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Mono.Cecil is only needed for the BepInEx preloader patcher signature.
          ExcludeAssets=runtime -> not copied to output (BepInEx ships its own). -->
     <PackageReference Include="Mono.Cecil" Version="0.11.5" ExcludeAssets="runtime" />
