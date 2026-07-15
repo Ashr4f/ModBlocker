@@ -8,17 +8,16 @@ namespace ModBlocker
     /// <summary>
     /// BepInEx 5 preloader patcher that prevents blocklisted mods from loading.
     ///
-    /// Reads BepInEx/config/modblocker.cfg (one entry per line) and renames the
-    /// matching plugin DLLs to ".blocked" BEFORE the chainloader scans them.
-    /// Removing an entry re-enables the mod on the next launch.
+    /// Reads BepInEx/config/modblocker.cfg and renames the matching plugin DLLs to
+    /// ".blocked" BEFORE the chainloader scans them. Removing an entry re-enables
+    /// the mod on the next launch. Nothing is ever deleted.
     ///
-    /// Entries can be either:
-    ///   - a mod manager folder name:  Author-ModName   (r2modman / Thunderstore Mod Manager)
-    ///   - a plain DLL file name:      SomePlugin.dll   (manual installs)
+    /// Config format (editable in-game through the companion plugin, F1):
+    ///   [Blocklist]
+    ///   Mods = Author-ModName, SomePlugin.dll
     ///
-    /// Designed for modpack maintainers: ship this patcher and its config file in
-    /// your modpack, and you can remotely disable a mod for every player by adding
-    /// one line to the config and publishing a pack update.
+    /// Bare lines (one entry per line) are also accepted for backward compatibility.
+    /// Matching is case-insensitive and whitespace-tolerant.
     /// </summary>
     public static class Patcher
     {
@@ -49,9 +48,7 @@ namespace ModBlocker
             // Mod-manager layout: plugins/Author-ModName/
             foreach (string dir in Directory.GetDirectories(plugins))
             {
-                string folderName = Path.GetFileName(dir);
-                bool blockFolder = Matches(folderName, blocklist);
-
+                bool blockFolder = blocklist.Contains(Normalize(Path.GetFileName(dir)));
                 foreach (string file in Directory.GetFiles(dir, "*", SearchOption.AllDirectories))
                     Apply(file, blockFolder || IsDllMatch(file, blocklist));
             }
@@ -59,6 +56,12 @@ namespace ModBlocker
             // Manual installs: loose DLLs at the root of plugins/
             foreach (string file in Directory.GetFiles(plugins))
                 Apply(file, IsDllMatch(file, blocklist));
+        }
+
+        /// <summary>Lowercase + trim, so entries match 100% regardless of case or stray spaces.</summary>
+        private static string Normalize(string s)
+        {
+            return (s ?? "").Trim().ToLowerInvariant();
         }
 
         private static void Apply(string file, bool block)
@@ -75,22 +78,12 @@ namespace ModBlocker
             }
         }
 
-        private static bool Matches(string name, List<string> blocklist)
-        {
-            foreach (string entry in blocklist)
-                if (name.Equals(entry, StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
-        }
-
         private static bool IsDllMatch(string file, List<string> blocklist)
         {
             string dll = Path.GetFileName(file);
-            string dllNoExt = dll.EndsWith(".blocked", StringComparison.OrdinalIgnoreCase)
-                ? dll.Substring(0, dll.Length - ".blocked".Length) : dll;
-            foreach (string entry in blocklist)
-                if (entry.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && dllNoExt.Equals(entry, StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
+            if (dll.EndsWith(".blocked", StringComparison.OrdinalIgnoreCase))
+                dll = dll.Substring(0, dll.Length - ".blocked".Length);
+            return blocklist.Contains(Normalize(dll));
         }
 
         private static List<string> LoadBlocklist(string path)
@@ -98,15 +91,21 @@ namespace ModBlocker
             var list = new List<string>();
             if (!File.Exists(path))
             {
+                // BepInEx-style layout so the r2modman Config Editor renders it
+                // as a proper section with a description and an editable field.
                 File.WriteAllLines(path, new[]
                 {
-                    "## ModBlocker - mods that must NOT load.",
-                    "## One entry per line. Either a mod manager folder name (Author-ModName)",
-                    "## or a plain DLL file name (SomePlugin.dll). Examples:",
-                    "## Marlthon-Cats",
-                    "## SomeOldPlugin.dll",
-                    "## Remove a line to re-enable the mod on the next launch.",
+                    "## Settings file was created by plugin ModBlocker",
+                    "## Plugin GUID: modblocker",
+                    "",
                     "[Blocklist]",
+                    "",
+                    "## Comma-separated list of mods to block at the NEXT launch.",
+                    "## Mod manager folder names (Author-ModName) or DLL file names (SomePlugin.dll). Case-insensitive.",
+                    "## Example: Marlthon-Cats, SomeOldPlugin.dll",
+                    "# Setting type: String",
+                    "# Default value: ",
+                    "Mods = ",
                 });
                 return list;
             }
@@ -115,7 +114,25 @@ namespace ModBlocker
                 string line = raw.Trim();
                 if (line.Length == 0) continue;
                 if (line.StartsWith("#") || line.StartsWith(";") || line.StartsWith("[")) continue;
-                list.Add(line);
+
+                if (line.IndexOf('=') >= 0)
+                {
+                    // "Mods = a, b, c" (BepInEx config entry written by the companion plugin)
+                    string key = line.Substring(0, line.IndexOf('=')).Trim();
+                    if (!key.Equals("Mods", StringComparison.OrdinalIgnoreCase)) continue;
+                    string value = line.Substring(line.IndexOf('=') + 1);
+                    foreach (string part in value.Split(','))
+                    {
+                        string entry = Normalize(part);
+                        if (entry.Length > 0 && !list.Contains(entry)) list.Add(entry);
+                    }
+                }
+                else
+                {
+                    // Legacy format: one bare entry per line
+                    string entry = Normalize(line);
+                    if (entry.Length > 0 && !list.Contains(entry)) list.Add(entry);
+                }
             }
             return list;
         }

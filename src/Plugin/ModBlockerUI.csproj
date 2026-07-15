@@ -1,16 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <AssemblyName>ModBlocker</AssemblyName>
+    <AssemblyName>ModBlockerUI</AssemblyName>
     <RootNamespace>ModBlocker</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Version>1.1.0</Version>
     <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Mono.Cecil is only needed for the BepInEx preloader patcher signature.
-         ExcludeAssets=runtime -> not copied to output (BepInEx ships its own). -->
-    <PackageReference Include="Mono.Cecil" Version="0.11.5" ExcludeAssets="runtime" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" ExcludeAssets="runtime" />
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.17" IncludeAssets="compile" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 </Project>

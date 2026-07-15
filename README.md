@@ -21,14 +21,18 @@ ever deleted.
 
 ## Config: `BepInEx/config/modblocker.cfg`
 
-One entry per line. Two formats are supported:
+Comma-separated entries. Two formats are supported, matching is case-insensitive:
 
 ```
-## Mod manager folder name (r2modman / Thunderstore Mod Manager):
-Marlthon-Cats
-## Plain DLL file name (manual installs):
-SomeOldPlugin.dll
+[Blocklist]
+Mods = Marlthon-Cats, SomeOldPlugin.dll
 ```
+
+## Editing in-game
+
+The companion plugin **ModBlockerUI** exposes the blocklist as a text field in
+the ConfigurationManager window (F1). Changes are saved instantly and applied
+on the **next launch** (blocking happens before plugins load, by design).
 
 A log of every block/re-enable action is written to `BepInEx/ModBlocker.log`.
 
@@ -44,4 +48,5 @@ A log of every block/re-enable action is written to `BepInEx/ModBlocker.log`.
 cd src
 dotnet build -c Release
 ```
-Output: `src/bin/Release/net472/ModBlocker.dll` → drop into `BepInEx/patchers/`.
+Patcher: `dotnet build src` → `src/bin/Release/net472/ModBlocker.dll` → `BepInEx/patchers/`
+Plugin:  `dotnet build src/Plugin` → `src/Plugin/bin/Release/net472/ModBlockerUI.dll` → `BepInEx/plugins/`

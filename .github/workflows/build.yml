@@ -9,7 +9,10 @@ jobs:
         with:
           dotnet-version: 8.x
       - run: dotnet build src -c Release
+      - run: dotnet build src/Plugin -c Release
       - uses: actions/upload-artifact@v4
         with:
           name: ModBlocker
-          path: src/bin/Release/net472/ModBlocker.dll
+          path: |
+            src/bin/Release/net472/ModBlocker.dll
+            src/Plugin/bin/Release/net472/ModBlockerUI.dll
