@@ -25,7 +25,7 @@ Comma-separated entries. Two formats are supported, matching is case-insensitive
 
 ```
 [Blocklist]
-Mods = Marlthon-Cats, SomeOldPlugin.dll
+Mods = SomeAuthor-SomeMod, SomeOldPlugin.dll
 ```
 
 ## Editing in-game

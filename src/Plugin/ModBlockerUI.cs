@@ -14,7 +14,7 @@ namespace ModBlocker
     /// Changes made in-game are saved immediately and take effect on the NEXT
     /// launch (blocking happens before plugins load, by design).
     /// </summary>
-    [BepInPlugin("modblocker", "ModBlocker", "1.1.1")]
+    [BepInPlugin("modblocker", "ModBlocker", "1.1.2")]
     public class ModBlockerUI : BaseUnityPlugin
     {
         private ConfigEntry<string> _mods;
@@ -25,9 +25,9 @@ namespace ModBlocker
                 "Blocklist",
                 "Mods",
                 "",
-                "Comma-separated list of mods to block at the NEXT launch. " +
-                "Use mod manager folder names (Author-ModName) or DLL file names (SomePlugin.dll). " +
-                "Case-insensitive. Example: Marlthon-Cats, SomeOldPlugin.dll");
+                "Comma-separated list of mods to block at the NEXT launch.\n" +
+                "Use mod manager folder names (Author-ModName) or DLL file names (SomePlugin.dll).\n" +
+                "Case-insensitive. Example: SomeAuthor-SomeMod, SomeOldPlugin.dll");
 
             _mods.SettingChanged += (_, __) =>
                 Logger.LogInfo("Blocklist updated (takes effect on next launch): " + _mods.Value);

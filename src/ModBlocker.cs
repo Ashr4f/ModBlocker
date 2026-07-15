@@ -120,7 +120,7 @@ namespace ModBlocker
                     "",
                     "## Comma-separated list of mods to block at the NEXT launch.",
                     "## Mod manager folder names (Author-ModName) or DLL file names (SomePlugin.dll). Case-insensitive.",
-                    "## Example: Marlthon-Cats, SomeOldPlugin.dll",
+                    "## Example: SomeAuthor-SomeMod, SomeOldPlugin.dll",
                     "# Setting type: String",
                     "# Default value: ",
                     "Mods = ",
