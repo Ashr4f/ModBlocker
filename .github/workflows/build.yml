@@ -1,5 +1,10 @@
 name: build
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: windows-latest
@@ -8,11 +13,29 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.x
-      - run: dotnet build src -c Release
-      - run: dotnet build src/Plugin -c Release
-      - uses: actions/upload-artifact@v4
+
+      - name: Build patcher
+        run: dotnet build src -c Release
+      - name: Build companion plugin
+        run: dotnet build src/Plugin -c Release
+
+      - name: Assemble Thunderstore package
+        shell: pwsh
+        run: |
+          Copy-Item src/bin/Release/net472/ModBlocker.dll thunderstore/patchers/ -Force
+          Copy-Item src/Plugin/bin/Release/net472/ModBlockerUI.dll thunderstore/plugins/ -Force
+          $v = (Get-Content thunderstore/manifest.json | ConvertFrom-Json).version_number
+          Compress-Archive -Path thunderstore/* -DestinationPath "ModBlocker-$v.zip" -Force
+          echo "Package: ModBlocker-$v.zip"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: ModBlocker
-          path: |
-            src/bin/Release/net472/ModBlocker.dll
-            src/Plugin/bin/Release/net472/ModBlockerUI.dll
+          name: ModBlocker-package
+          path: ModBlocker-*.zip
+
+      - name: GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ModBlocker-*.zip

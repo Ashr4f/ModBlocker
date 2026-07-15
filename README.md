@@ -1,5 +1,8 @@
 # ModBlocker
 
+[![build](https://github.com/Ashr4f/ModBlocker/actions/workflows/build.yml/badge.svg)](https://github.com/Ashr4f/ModBlocker/actions)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A BepInEx 5 preloader patcher for Valheim (and other BepInEx games) that
 **prevents blocklisted mods from loading** — without uninstalling them.
 
@@ -50,3 +53,24 @@ dotnet build -c Release
 ```
 Patcher: `dotnet build src` → `src/bin/Release/net472/ModBlocker.dll` → `BepInEx/patchers/`
 Plugin:  `dotnet build src/Plugin` → `src/Plugin/bin/Release/net472/ModBlockerUI.dll` → `BepInEx/plugins/`
+
+## FAQ
+
+**Does blocking delete anything?** No. DLLs are renamed to `.blocked`, never deleted.
+Remove the entry and they are restored on the next launch.
+
+**Can it block itself?** No — entries targeting ModBlocker's own components are
+ignored and logged.
+
+**Does it work outside Valheim?** It should work with any BepInEx 5 game, but it
+is only tested on Valheim.
+
+## Contributing
+
+Issues and pull requests are welcome. The CI builds both DLLs and assembles the
+ready-to-upload Thunderstore package on every push (see Actions artifacts).
+Pushing a `vX.Y.Z` tag creates a GitHub Release with the package attached.
+
+## License
+
+[MIT](LICENSE) — © 2026 Ashraf
