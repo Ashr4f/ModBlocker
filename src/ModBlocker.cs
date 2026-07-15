@@ -64,8 +64,26 @@ namespace ModBlocker
             return (s ?? "").Trim().ToLowerInvariant();
         }
 
+        // Self-protection: ModBlocker must never block its own components,
+        // otherwise users could lock themselves out of the blocklist UI.
+        private static readonly string[] Protected = { "modblocker.dll", "modblockerui.dll" };
+
+        private static bool IsProtected(string file)
+        {
+            string name = Path.GetFileName(file).ToLowerInvariant();
+            if (name.EndsWith(".blocked")) name = name.Substring(0, name.Length - ".blocked".Length);
+            foreach (string p in Protected)
+                if (name == p) return true;
+            return false;
+        }
+
         private static void Apply(string file, bool block)
         {
+            if (block && IsProtected(file))
+            {
+                Log("Ignored: " + Path.GetFileName(file) + " (ModBlocker cannot block itself)");
+                block = false; // fall through so a previously .blocked copy gets re-enabled
+            }
             if (block && file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
             {
                 TryMove(file, file + ".blocked", "Blocked");

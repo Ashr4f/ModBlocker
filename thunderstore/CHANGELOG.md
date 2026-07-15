@@ -7,3 +7,6 @@
 - Normalized matching (lowercase + trim) for 100% reliable entries.
 - New config format `Mods = a, b, c` (legacy one-per-line still supported).
 - Companion plugin ModBlockerUI: edit the blocklist in-game via ConfigurationManager (F1); applies on next launch.
+
+## 1.1.1
+- Self-protection: ModBlocker ignores blocklist entries targeting its own components (and auto-restores them if previously blocked).

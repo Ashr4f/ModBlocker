@@ -14,7 +14,7 @@ namespace ModBlocker
     /// Changes made in-game are saved immediately and take effect on the NEXT
     /// launch (blocking happens before plugins load, by design).
     /// </summary>
-    [BepInPlugin("modblocker", "ModBlocker", "1.1.0")]
+    [BepInPlugin("modblocker", "ModBlocker", "1.1.1")]
     public class ModBlockerUI : BaseUnityPlugin
     {
         private ConfigEntry<string> _mods;
