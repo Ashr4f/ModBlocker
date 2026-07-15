@@ -25,6 +25,7 @@ jobs:
           Copy-Item src/bin/Release/net472/ModBlocker.dll thunderstore/patchers/ -Force
           Copy-Item src/Plugin/bin/Release/net472/ModBlockerUI.dll thunderstore/plugins/ -Force
           $v = (Get-Content thunderstore/manifest.json | ConvertFrom-Json).version_number
+          Remove-Item thunderstore/patchers/.gitkeep, thunderstore/plugins/.gitkeep -ErrorAction SilentlyContinue
           Compress-Archive -Path thunderstore/* -DestinationPath "ModBlocker-$v.zip" -Force
           echo "Package: ModBlocker-$v.zip"
 
