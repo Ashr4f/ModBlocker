@@ -17,3 +17,7 @@
 ## 1.2.0
 - Core protection: BepInEx and Jotunn can never be blocked.
 - Cascade blocking: blocking a mod automatically blocks every mod that depends on it (recursively), logged as 'Also blocked: X (depends on Y)'. Removing the entry restores the whole chain.
+
+## 1.3.0
+- Server enforcement via ServerSync (credits: blaxxun): the server's blocklist is pushed to all clients (applies on their next launch), and players without ModBlocker are kicked on connect (ModRequired).
+- The effective blocklist is mirrored to modblocker.server; the preloader merges it with the local list.

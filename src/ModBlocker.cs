@@ -58,6 +58,18 @@ namespace ModBlocker
         {
             string cfgPath = Path.Combine(BepInExRoot, "config", "modblocker.cfg");
             List<string> blocklist = LoadBlocklist(cfgPath);
+
+            // Merge the server-enforced blocklist mirrored by the companion plugin
+            // (written on join when the server locks its configuration).
+            string serverPath = Path.Combine(BepInExRoot, "config", "modblocker.server");
+            if (File.Exists(serverPath))
+            {
+                foreach (string part in File.ReadAllText(serverPath).Split(','))
+                {
+                    string entry = Normalize(part);
+                    if (entry.Length > 0 && !blocklist.Contains(entry)) blocklist.Add(entry);
+                }
+            }
             Log("Blocklist (" + blocklist.Count + "): " + string.Join(", ", blocklist.ToArray()));
 
             string plugins = Path.Combine(BepInExRoot, "plugins");

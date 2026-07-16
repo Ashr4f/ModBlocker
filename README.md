@@ -39,6 +39,19 @@ on the **next launch** (blocking happens before plugins load, by design).
 
 A log of every block/re-enable action is written to `BepInEx/ModBlocker.log`.
 
+## Server enforcement (v1.3+)
+
+Install ModBlocker on the server (or in-game host) and on all clients:
+
+- The **server's blocklist is pushed to every connecting client** (ServerSync,
+  `Lock Configuration = true`) and applies on their **next launch**.
+- Players **without ModBlocker installed are kicked** on connect (`ModRequired`),
+  like AzuAntiCheat does for its whitelist.
+- Server values never overwrite the client's local `modblocker.cfg`; they are
+  mirrored to `modblocker.server` and merged by the preloader at startup.
+
+ServerSync is embedded from [blaxxun's ServerSync](https://github.com/blaxxun-boop/ServerSync) — all credit to blaxxun.
+
 ## Safety nets
 
 - **Core protection**: BepInEx and Jotunn can never be blocked — entries
