@@ -1,4 +1,6 @@
-﻿using System;
+// ConfigSync.cs - vendored from https://github.com/blaxxun-boop/ServerSync (MIT-0, credits: blaxxun)
+// ModBlocker modification: ShowConnectionError() rewritten with reflection to drop the Unity.TextMeshPro dependency.
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
@@ -1383,33 +1385,37 @@ public class VersionCheck
 		{
 			return;
 		}
-		bool failedCheck = false;
+
+		// ModBlocker modification: the original implementation manipulated the TMP_Text
+		// error label directly, requiring a compile-time Unity.TextMeshPro reference.
+		// Reflection is used instead and the cosmetic panel resizing is dropped;
+		// the explanatory error message itself is preserved.
+		object? errorLabel = AccessTools.DeclaredField(typeof(FejdStartup), "m_connectionFailedError")?.GetValue(__instance);
+		PropertyInfo? textProperty = errorLabel?.GetType().GetProperty("text");
+		if (errorLabel == null || textProperty == null)
+		{
+			return;
+		}
+		string currentText = (string)textProperty.GetValue(errorLabel, null);
+		string extra = "";
+
 		VersionCheck[] failedChecks = GetFailedClient();
 		if (failedChecks.Length > 0)
 		{
-			string error = string.Join("\n", failedChecks.Select(check => check.Error()));
-			__instance.m_connectionFailedError.text += "\n" + error;
-			failedCheck = true;
+			extra += "\n" + string.Join("\n", failedChecks.Select(check => check.Error()));
 		}
 
 		foreach (KeyValuePair<string, string> kv in notProcessedNames.OrderBy(kv => kv.Key))
 		{
-			if (!__instance.m_connectionFailedError.text.Contains(kv.Key))
+			if (!currentText.Contains(kv.Key))
 			{
-				__instance.m_connectionFailedError.text += $"\nServer expects you to have {kv.Key} (Version: {kv.Value}) installed.";
-				failedCheck = true;
+				extra += $"\nServer expects you to have {kv.Key} (Version: {kv.Value}) installed.";
 			}
 		}
 
-		if (failedCheck)
+		if (extra.Length > 0)
 		{
-			RectTransform panel = __instance.m_connectionFailedPanel.transform.Find("Image").GetComponent<RectTransform>();
-			panel.sizeDelta = panel.sizeDelta with { x = 675 };
-			__instance.m_connectionFailedError.ForceMeshUpdate();
-			float newHeight = __instance.m_connectionFailedError.renderedHeight + 105;
-			RectTransform button = panel.transform.Find("ButtonOk").GetComponent<RectTransform>();
-			button.anchoredPosition = new Vector2(button.anchoredPosition.x, button.anchoredPosition.y - (newHeight - panel.sizeDelta.y) / 2);
-			panel.sizeDelta = panel.sizeDelta with { y = newHeight };
+			textProperty.SetValue(errorLabel, currentText + extra, null);
 		}
 	}
 }

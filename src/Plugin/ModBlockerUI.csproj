@@ -4,6 +4,8 @@
     <AssemblyName>ModBlockerUI</AssemblyName>
     <RootNamespace>ModBlocker</RootNamespace>
     <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
     <Version>1.3.0</Version>
     <DebugType>none</DebugType>
   </PropertyGroup>
